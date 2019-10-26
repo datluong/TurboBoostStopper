@@ -37,27 +37,40 @@ static void disable_tb(__unused void * param_not_used) {
 
 bool com_Glamdevelopment_driver_MyCoolDriver::init(OSDictionary *dict) {
     bool result = super::init(dict);
-    IOLog("[MyCoolDriver 1.0.5] Initializing MyCoolDriver..\n");
+    IOLog("[MyCoolDriver 1.0.6] Initializing MyCoolDriver..\n");
     return result;
 }
 
 void com_Glamdevelopment_driver_MyCoolDriver::free() {
-    IOLog("[MyCoolDriver 1.0.5] Freeing\n");
+    IOLog("[MyCoolDriver 1.0.6] Freeing\n");
     super::free();
 }
 
 IOService * com_Glamdevelopment_driver_MyCoolDriver::probe(IOService *provider, SInt32 *score) {
     IOService* result = super::probe(provider, score);
-    IOLog("[MyCoolDriver 1.0.5] Probing.\n");
+    IOLog("[MyCoolDriver 1.0.6] Probing..\n");
     return result;
 }
 
 void com_Glamdevelopment_driver_MyCoolDriver::_disableTurboBoost(thread_call_param_t us, thread_call_param_t)
 {
+    IOLog("[MyCoolDriver 1.0.6] [threadcall] executing.. 0\n" );
     uint64_t prev = rdmsr64(MSR_IA32_MISC_ENABLE);
+    
+//    if (prev & disableTurboBoost) {
+//        IOLog("[MyCoolDriver 1.0.6] [threadcall] TurboBoost already disabled." );
+//        return;
+//    }
+    
+    IOLog("[MyCoolDriver 1.0.6] [threadcall] executing.. 1 val %llx \n", prev );
     mp_rendezvous_no_intrs(disable_tb, NULL);
+    IOLog("[MyCoolDriver 1.0.6] [threadcall] executing.. 2\n" );
     uint64_t current = rdmsr64(MSR_IA32_MISC_ENABLE);
-    IOLog("[MyCoolDriver 1.0.5] [threadcall] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
+    
+    printf("[MyCoolDriver 1.0.6] [threadcall] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
+    printf("[MyCoolDriver 1.0.6] [threadcall] executing.. Done.\n" );
+    IOLog("[MyCoolDriver 1.0.6] [threadcall] iolog prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
+    IOLog("[MyCoolDriver 1.0.6] [threadcall] iolog executing.. Done.\n" );
 }
 
 IOReturn com_Glamdevelopment_driver_MyCoolDriver::setPowerState ( unsigned long whichState, IOService * whatDevice )
@@ -70,12 +83,15 @@ IOReturn com_Glamdevelopment_driver_MyCoolDriver::setPowerState ( unsigned long 
         uint64_t prev = rdmsr64(MSR_IA32_MISC_ENABLE);
         mp_rendezvous_no_intrs(disable_tb, NULL);
         uint64_t current = rdmsr64(MSR_IA32_MISC_ENABLE);
-        IOLog("[MyCoolDriver 1.0.5] [wake up] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
+        IOLog("[MyCoolDriver 1.0.6] [wake up] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
         
         if (delayTimer) {
             UInt64 deadline;
-            clock_interval_to_deadline(3, kSecondScale, &deadline);
+            clock_interval_to_deadline(2, kSecondScale, &deadline);
             thread_call_enter_delayed(delayTimer, deadline);
+        }
+        else {
+            IOLog("[MyCoolDriver 1.0.6] [wake up] zero delay \n");
         }
     }
     
@@ -90,7 +106,7 @@ IOReturn com_Glamdevelopment_driver_MyCoolDriver::setPowerState ( unsigned long 
 bool com_Glamdevelopment_driver_MyCoolDriver::start(IOService *provider)
 {
     bool result = super::start(provider);
-    IOLog("[MyCoolDriver 1.0.5] Starting\n");
+    IOLog("[MyCoolDriver 1.0.6] Starting\n");
     
     // Register for Wake event; Apple seems to like to re-enable TurboBoost after waking the maching up
     PMinit();
@@ -100,7 +116,7 @@ bool com_Glamdevelopment_driver_MyCoolDriver::start(IOService *provider)
     uint64_t prev = rdmsr64(MSR_IA32_MISC_ENABLE);
     mp_rendezvous_no_intrs(disable_tb, NULL);
     uint64_t current = rdmsr64(MSR_IA32_MISC_ENABLE);
-    IOLog("[MyCoolDriver 1.0.5] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
+    IOLog("[MyCoolDriver 1.0.6] prev: %llx current: %llx check: %llx\n", prev, current, (current & disableTurboBoost) );
     
     // Setup Another invocation
     delayTimer = thread_call_allocate(_disableTurboBoost, (thread_call_param_t) this);
@@ -113,7 +129,7 @@ bool com_Glamdevelopment_driver_MyCoolDriver::start(IOService *provider)
 
 void com_Glamdevelopment_driver_MyCoolDriver::stop(IOService *provider)
 {
-    IOLog("[MyCoolDriver 1.0.5] Stopping\n");
+    IOLog("[MyCoolDriver 1.0.6] Stopping\n");
     
     if(delayTimer) {
         thread_call_cancel(delayTimer);
